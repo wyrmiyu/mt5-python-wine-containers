@@ -36,6 +36,7 @@ jobs:
     strategy:
       matrix:
         container: ${{ fromJSON(needs.changes.outputs.containers) }}
+        max-parallel: 1
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
