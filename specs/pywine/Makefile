@@ -12,7 +12,7 @@ include $(VERSIONS)
 # ORGANIZATION = <username>
 # REGISTRY = <registry-url>
 # REPOSITORY = <git repository url>
-BUILD_CONSTANTS = ../build_constants.conf
+BUILD_CONSTANTS = ../../build_constants.conf
 include $(BUILD_CONSTANTS)
 
 BASE_IMAGE = $(REGISTRY)/$(ORGANIZATION)/wine-stable
@@ -29,7 +29,7 @@ $(branches): version = $($@_version)
 $(branches):
 	@echo "Building $(image):$(version) ..."
 	@$(CON_RT) build --pull \
-		--cache-from $(image):latest \
+		--cache-from $(image) \
 		--build-arg CREATED_DATE=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ") \
 		--build-arg REFNAME=$(version) \
 		--build-arg REPOSITORY=$(REPOSITORY) \
