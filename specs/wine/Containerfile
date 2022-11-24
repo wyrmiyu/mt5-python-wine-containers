@@ -42,7 +42,7 @@ ARG CREATED_DATE
 ARG REFNAME
 ARG REPOSITORY
 
-LABEL org.opencontainers.image.authors="Richard 'Sylver' Kemp <sylver@materya.io>"
+LABEL org.opencontainers.image.authors="Sandi Wallendahl <wyrmiyu@gmail.com>"
 LABEL org.opencontainers.image.created=${CREATED_DATE}
 LABEL org.opencontainers.image.description="Image containing a minimal Wine ${WINE_BRANCH} environment based on debian buster-slim. Headless with Xvfb."
 LABEL org.opencontainers.image.documentation="${REPOSITORY}/specs/wine"
@@ -52,7 +52,7 @@ LABEL org.opencontainers.image.revision=
 LABEL org.opencontainers.image.source=${REPOSITORY}
 LABEL org.opencontainers.image.title="Wine ${WINE_BRANCH} Headless Base Container"
 LABEL org.opencontainers.image.url="${REPOSITORY}/specs/wine"
-LABEL org.opencontainers.image.vendor="Materya"
+LABEL org.opencontainers.image.vendor="wyrmiyu"
 LABEL org.opencontainers.image.version=${WINE_VERSION}
 
 CMD ["/bin/bash"]

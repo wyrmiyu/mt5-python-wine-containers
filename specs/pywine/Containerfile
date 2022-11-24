@@ -62,7 +62,7 @@ ARG CREATED_DATE
 ARG REFNAME
 ARG REPOSITORY
 
-LABEL org.opencontainers.image.authors="Richard 'Sylver' Kemp <sylver@materya.io>"
+LABEL org.opencontainers.image.authors="Sandi Wallendahl <wyrmiyu@gmail.com>"
 LABEL org.opencontainers.image.created=${CREATED_DATE}
 LABEL org.opencontainers.image.description="Image containing a wine headless prefix with Python ${PY_VERSION} installed."
 LABEL org.opencontainers.image.documentation="${REPOSITORY}/specs/pywine"
@@ -72,7 +72,7 @@ LABEL org.opencontainers.image.revision=
 LABEL org.opencontainers.image.source=${REPOSITORY}
 LABEL org.opencontainers.image.title="Headless Wine prefix for Python."
 LABEL org.opencontainers.image.url="${REPOSITORY}/specs/pywine"
-LABEL org.opencontainers.image.vendor="Materya"
+LABEL org.opencontainers.image.vendor="wyrmiyu"
 LABEL org.opencontainers.image.version=${PY_VERSION}
 
 CMD ["/bin/bash"]

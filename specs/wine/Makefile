@@ -3,13 +3,17 @@ SHELL = /bin/sh
 
 export DOCKER_BUILDKIT = 1
 
+# Contains version tags for the build
 VERSIONS = ./Versions
 include $(VERSIONS)
 
-DC = docker
-ORGANIZATION = materya
-REGISTRY = ghcr.io
-REPOSITORY = https://github.com/materya/containers
+# Contains the following constants:
+# CON_RT = <podman|docker>
+# ORGANIZATION = <username>
+# REGISTRY = <registry-url>
+# REPOSITORY = <git repository url>
+BUILD_CONSTANTS = ../build_constants.conf
+include $(BUILD_CONSTANTS)
 
 branches := stable staging devel
 name := wine
@@ -33,7 +37,7 @@ $(branches):
 		-t $(image):$(version) \
 		-t $(REGISTRY)/$(image):latest \
 		-t $(REGISTRY)/$(image):$(version) \
-		-f Dockerfile \
+		-f Containerfile \
 		.
 
 .PHONY: clean-branch
@@ -53,8 +57,10 @@ clean:
 push-branch: BRANCH := stable
 push-branch: image := $(ORGANIZATION)/$(name)-$(BRANCH)
 push-branch:
-	@$(DC) push -a $(image)
-	@$(DC) push -a $(REGISTRY)/$(image)
+	@$(CON_RT) push $(image):$(version)
+	@$(CON_RT) push $(REGISTRY)/$(image):$(version)
+	@$(CON_RT) tag $(image):$(version) $(image):latest
+	@$(CON_RT) tag $(REGISTRY)/$(image):$(version) $(REGISTRY)/$(image):latest
 
 .PHONY: push
 push:

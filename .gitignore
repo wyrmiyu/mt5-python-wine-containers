@@ -15,6 +15,7 @@
 !.env.defaults
 !.gitattributes
 !.gitignore
+!build_constants.conf
 !CHANGELOG.md
 !LICENSE
 !Makefile
