@@ -34,9 +34,9 @@ jobs:
     needs: changes
     if: needs.changes.outputs.trigger_build == 'true'
     strategy:
+      max-parallel: 1
       matrix:
         container: ${{ fromJSON(needs.changes.outputs.containers) }}
-        max-parallel: 1
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
