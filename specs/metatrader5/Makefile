@@ -53,17 +53,20 @@ clean:
 		|| echo "No image found matching \"$(image)\""
 
 .PHONY: push-branch
-push-branch: version := pywine-$(BRANCH)
-push-branch: pywine_version = $($(BRANCH)_version)
-push-branch: image := $(ORGANIZATION)/$(name)
-push-branch: additional_tags := latest $(version)-$(pywine_version)
+push-branch: BRANCH := 3.10
+push-branch: version = pywine-$(BRANCH)
+push-branch: image = $(ORGANIZATION)/$(name)
+# push-branch: pywine_version = $($(BRANCH)_version)
+# push-branch: additional_tags := latest $(version)-$(pywine_version)
 push-branch:
 	@$(CON_RT) push $(image):$(version)
 	@$(CON_RT) push $(REGISTRY)/$(image):$(version)
-	@for tag in additional_tags ; do
-		@$(CON_RT) tag $(image):$(version) $(image):$(tag)
-		@$(CON_RT) tag $(REGISTRY)/$(image):$(version) $(REGISTRY)/$(image):$(tag)
-	done
+	# @$(CON_RT) push $(image):$(version)
+	# @$(CON_RT) push $(REGISTRY)/$(image):$(version)
+	# @for tag in additional_tags ; do
+		# @$(CON_RT) tag $(image):$(version) $(image):$(tag)
+		# @$(CON_RT) tag $(REGISTRY)/$(image):$(version) $(REGISTRY)/$(image):$(tag)
+	# done
 
 .PHONY: push
 push:

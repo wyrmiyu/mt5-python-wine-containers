@@ -55,12 +55,12 @@ clean:
 
 .PHONY: push-branch
 push-branch: BRANCH := stable
-push-branch: image := $(ORGANIZATION)/$(name)-$(BRANCH)
+push-branch: image = $(ORGANIZATION)/$(name)-$(BRANCH)
 push-branch:
 	@$(CON_RT) push $(image):$(version)
 	@$(CON_RT) push $(REGISTRY)/$(image):$(version)
-	@$(CON_RT) tag $(image):$(version) $(image):latest
-	@$(CON_RT) tag $(REGISTRY)/$(image):$(version) $(REGISTRY)/$(image):latest
+	# @$(CON_RT) tag $(image):$(version) $(image):latest
+	# @$(CON_RT) tag $(REGISTRY)/$(image):$(version) $(REGISTRY)/$(image):latest
 
 .PHONY: push
 push:
