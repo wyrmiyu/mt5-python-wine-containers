@@ -57,7 +57,7 @@ clean:
 .PHONY: push-branch
 push-branch: BRANCH := stable
 push-branch: image = $(ORGANIZATION)/$(name)-$(BRANCH)
-push-branch: version = $(shell echo $($@_version) | sed 's/~.*//')
+push-branch: version = $(shell echo $($(BRANCH)_version) | sed 's/~.*//')
 push-branch:
 	@$(CON_RT) tag $(image) $(image):$(version)
 	@$(CON_RT) push $(REGISTRY)/$(image)
