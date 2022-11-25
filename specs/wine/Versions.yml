@@ -1,0 +1,11 @@
+---
+versions:
+  stable:
+    tag: 6.0.4
+    pkg: "{versions.stable.tag}~buster-1"
+  staging:
+    tag: 7.17
+    pkg: "{versions.staging.tag}~buster-1"
+  devel:
+    tag: 7.17
+    pkg: "{versions.devel.tag}~buster-1"

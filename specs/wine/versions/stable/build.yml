@@ -1,0 +1,5 @@
+build:
+  version_tag: 6.0.4
+  add_tags:
+    -"6.0.4-buster"
+  pkg_tag: "~buster-1"

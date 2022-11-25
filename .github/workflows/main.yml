@@ -4,31 +4,136 @@ on:
   push:
     branches: [ build-dev ]
 
+concurrency:
+  group: ${{ github.sha }}
+  cancel-in-progress: true
+
 jobs:
   changes:
     runs-on: ubuntu-latest
     outputs:
-      trigger_build: ${{ steps.trigger.outputs.specs }}
-      containers: ${{ steps.filter_specs.outputs.changes }}
+      wine: ${{ steps.filter_specs.outputs.wine }}
+      wine_versions_json: ${{ steps.versions_to_build.outputs.wine_json }}
+      pywine: ${{ steps.filter_specs.outputs.pywine }}
+      pywine_versions_json: ${{ steps.versions_to_build.outputs.pywine_json }}
+      metatrader5: ${{ steps.filter_specs.outputs.metatrader5 }}
     steps:
     - name: Checkout
       uses: actions/checkout@v3
 
-    - name: Detect changes
-      uses: dorny/paths-filter@v2
-      id: trigger
-      with:
-        filters: |
-          specs: 'specs/**'
-
     - name: Filter specs
-      uses: dorny/paths-filter@v2
       id: filter_specs
+      uses: dorny/paths-filter@v2
       with:
         filters: |
-          metatrader: 'specs/metatrader/**'
-          pywine: 'specs/pywine/**'
-          wine: 'specs/wine/**'
+          wine:
+            - 'specs/wine/**'
+          pywine:
+            - 'specs/pywine/**'
+          metatrader5:
+            - 'specs/metatrader5/**'
+
+    - name: Filter versions
+      id: filter_versions
+      uses: dorny/paths-filter@v2
+      with:
+        list-files: shell
+        filters: |
+          wine:
+            - added|modified: 'specs/wine/versions/**
+          pywine:
+            - added|modified: 'specs/pywine/versions/**'
+
+    - name: Parse Wine versions
+      if: steps.filter_versions.outputs.wine == 'true'
+      id: wine_versions
+      run: |
+        echo json="$( \
+          echo ${{ steps.filter_versions.outputs.wine_files }} \
+          | sed -E 's|.*/([^/]+)/build.yml|\1|g' \
+          | tr '\n' ' ' \
+          | sed -E 's|\s*$||' \
+          | jq -rsc)" \
+          >> $GITHUB_OUTPUT
+
+    - name: Parse PyWine versions
+      if: steps.filter_versions.outputs.pywine == 'true'
+      id: pywine_versions
+      run: |
+        echo "json=$( \
+          echo ${{ steps.filter_versions.outputs.pywine_files }} \
+          | sed -E 's|.*/([^/]+)/build.yml|\1|g' \
+          | tr '\n' ' ' \
+          | sed -E -e 's|^\s*||' -e 's|\s*$||' \
+          | jq -rsc)" \
+          >> $GITHUB_OUTPUT
+
+    - name: Determine versions to build
+      id: versions_to_build
+      run: |
+        versions_changed=false
+        if [[ ${{steps.filter_versions.outputs.wine}} == true ]]; then
+          echo "wine_json=${{ steps.wine_versions.outputs.json }}" \
+            >> $GITHUB_OUTPUT
+          versions_changed=true
+        fi
+        if [[ ${{steps.filter_versions.outputs.pywine}} == true ]]; then
+          echo "pywine_json=${{ steps.pywine_versions.outputs.json }}" \
+            >> $GITHUB_OUTPUT
+          versions_changed=true
+        fi
+        if [[ version_changed == false ]]; then
+          echo "wine_json=['all']" >> $GITHUB_OUTPUT
+          echo "pywine_json=['all']" >> $GITHUB_OUTPUT
+        fi
+
+  wine:
+    needs: changes
+    if: needs.changes.outputs.wine == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the repository.
+        uses: actions/checkout@v3
+
+      - name: Get versions for the build.
+        id: geT_versions
+        uses: CumulusDS/get-yaml-paths-action@v1
+        with:
+          file: specs/wine/Versions.yml
+          tag_version: versions.stable.tag
+          pkg_version: versions.stable.pkg
+
+      - name: Use the Buildah Action to build containers.
+        id: build-image
+        uses: redhat-actions/buildah-build@v2
+        with:
+          image: wine-stable
+          tags: latest ${{ steps.get_versions.outputs.stable.tag }}
+          containerfiles: |
+            specs/wine/Containerfile
+
+  # check_wine:
+  #   needs: wine
+  #   if: always()
+  #   outputs:
+  #     job_result: ${{ steps.check.outputs.job_result }}
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Check result for the wine job
+  #       id: check
+  #       run: |
+  #         echo "job_result=${{ needs.wine.result }}" >> $GITHUB_OUTPUT
+
+  pywine:
+    needs: [ changes, wine ]
+    if: always() && needs.changes.outputs.pywine == 'true' && needs.wine.result == ( 'success' || 'skipped' )
+    runs-on: ubuntu-latest
+
+  megatrader5:
+    needs: [ changes, pywine ]
+    if: always() && needs.changes.outputs.megatrader5 == 'true' && needs.pywine.result == ( 'success' || 'skipped' )
+    runs-on: ubuntu-latest
+
 
   build_and_push:
     needs: changes
@@ -40,7 +145,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Login to GitHub Packages Container Registry
         uses: redhat-actions/podman-login@v1
@@ -57,3 +162,5 @@ jobs:
         run: |
           cd specs/${{ matrix.container }}
           make push
+
+

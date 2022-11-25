@@ -1,0 +1,5 @@
+build:
+  version_tag: 7.17
+  add_tags:
+    -"7,17-buster"
+  pkg_tag: "~buster-1"
