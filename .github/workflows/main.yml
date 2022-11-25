@@ -48,7 +48,7 @@ jobs:
       if: steps.filter_versions.outputs.wine == 'true'
       id: wine_versions
       run: |
-        echo json="$( \
+        echo "json=$( \
           echo ${{ steps.filter_versions.outputs.wine_files }} \
           | sed -E 's|.*/([^/]+)/build.yml|\1|g' \
           | tr '\n' ' ' \
