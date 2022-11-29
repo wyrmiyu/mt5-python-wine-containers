@@ -1,5 +1,17 @@
 name: Build & Push
 
+
+#
+# TEST THIS SHIT LOCALLY WITH:
+# https://github.com/nektos/act/
+#
+# AS EXPECTED, THAT SHIT DOES NOT WORK WITH PODMAN. :D
+# HOWEVER, SOMEONE HAS TUNK'D THIS INTO SUBMISSION WITH HATE:
+# https://blog.zedas.fr/posts/act-to-test-github-action-locally/
+#
+# "Kaikki ATK tottelee kuria." –Syyllinen
+#
+
 on:
   push:
     branches: [ build-dev ]
@@ -13,9 +25,9 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       wine: ${{ steps.filter_specs.outputs.wine }}
-      wine_versions_json: ${{ steps.versions_to_build.outputs.wine_json }}
+      wine_versions: ${{ steps.versions.outputs.wine_json }}
       pywine: ${{ steps.filter_specs.outputs.pywine }}
-      pywine_versions_json: ${{ steps.versions_to_build.outputs.pywine_json }}
+      pywine_versions: ${{ steps.versions.outputs.pywine_json }}
       metatrader5: ${{ steps.filter_specs.outputs.metatrader5 }}
     steps:
     - name: Checkout
@@ -25,24 +37,22 @@ jobs:
       id: filter_specs
       uses: dorny/paths-filter@v2
       with:
-        filters: |
-          wine:
-            - 'specs/wine/**'
-          pywine:
-            - 'specs/pywine/**'
-          metatrader5:
-            - 'specs/metatrader5/**'
-
-    - name: Filter versions
-      id: filter_versions
-      uses: dorny/paths-filter@v2
-      with:
         list-files: shell
         filters: |
           wine:
-            - added|modified: 'specs/wine/versions/**
+            - 'specs/wine/**'
+          wine_versions:
+            - added|modified: 'specs/wine/versions/**'
+          wine_bulld_configs:
+            - 'specs/wine/!(versions)**'
           pywine:
+            - 'specs/pywine/**'
+          pywine_versions:
             - added|modified: 'specs/pywine/versions/**'
+          pywine_build_configs:
+            - 'specs/pywine/!(versions)**'
+          metatrader5:
+            - 'specs/metatrader5/**'
 
     - name: Parse Wine versions
       if: steps.filter_versions.outputs.wine == 'true'
@@ -50,11 +60,11 @@ jobs:
       run: |
         echo "json=$( \
           echo ${{ steps.filter_versions.outputs.wine_files }} \
-          | sed -E 's|.*/([^/]+)/build.yml|\1|g' \
+          | sed -E 's|[^\b]*/([^/]+)/build.yml| \"\1\" |g' \
           | tr '\n' ' ' \
-          | sed -E 's|\s*$||' \
-          | jq -rsc)" \
-          >> $GITHUB_OUTPUT
+          | sed -E -e 's|^\s*||' -e 's|\s*$||' \
+          | jq -sc \
+        )" >> $GITHUB_OUTPUT
 
     - name: Parse PyWine versions
       if: steps.filter_versions.outputs.pywine == 'true'
@@ -62,55 +72,69 @@ jobs:
       run: |
         echo "json=$( \
           echo ${{ steps.filter_versions.outputs.pywine_files }} \
-          | sed -E 's|.*/([^/]+)/build.yml|\1|g' \
+          | sed -E 's|[^\b]*/([^/]+)/build.yml| \"\1\" |g' \
           | tr '\n' ' ' \
           | sed -E -e 's|^\s*||' -e 's|\s*$||' \
-          | jq -rsc)" \
-          >> $GITHUB_OUTPUT
+          | jq -sc \
+        )" >> $GITHUB_OUTPUT
 
     - name: Determine versions to build
-      id: versions_to_build
+      id: versions
       run: |
         versions_changed=false
-        if [[ ${{steps.filter_versions.outputs.wine}} == true ]]; then
+        if [[ ${{ steps.filter_versions.outputs.wine }} == true ]]; then
           echo "wine_json=${{ steps.wine_versions.outputs.json }}" \
             >> $GITHUB_OUTPUT
           versions_changed=true
         fi
-        if [[ ${{steps.filter_versions.outputs.pywine}} == true ]]; then
+        if [[ ${{ steps.filter_versions.outputs.pywine }} == true ]]; then
           echo "pywine_json=${{ steps.pywine_versions.outputs.json }}" \
             >> $GITHUB_OUTPUT
           versions_changed=true
         fi
-        if [[ version_changed == false ]]; then
-          echo "wine_json=['all']" >> $GITHUB_OUTPUT
-          echo "pywine_json=['all']" >> $GITHUB_OUTPUT
+        if [[ versions_changed == false ]]; then
+          for container in wine pywine; do
+            echo "${container}_json=$( \
+              ls -1d specs/$container/versions/* \
+              | sed -E 's|.*/([^/]+)$|\"\1\"|g' \
+              | tr '\n' ' ' \
+              | sed -E -e 's|^\s*||' -e 's|\s*$||' \
+              | jq -sc \
+            )" >> $GITHUB_OUTPUT
+          done
         fi
 
   wine:
     needs: changes
     if: needs.changes.outputs.wine == 'true'
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        version: ${{ needs.changes.outputs.wine_versions }}
     steps:
       - name: Checkout the repository.
         uses: actions/checkout@v3
 
-      - name: Get versions for the build.
-        id: geT_versions
-        uses: CumulusDS/get-yaml-paths-action@v1
+      - name: Load build version/tag configuration
+        id: versions
+        uses: jbutcher5/read-yaml@main
         with:
-          file: specs/wine/Versions.yml
-          tag_version: versions.stable.tag
-          pkg_version: versions.stable.pkg
+          file: ".specs/wine/versions/${{ matrix.version }}/build.yml"
+          key-path: '["build"]'
 
-      - name: Use the Buildah Action to build containers.
-        id: build-image
-        uses: redhat-actions/buildah-build@v2
-        with:
-          image: wine-stable
-          tags: latest ${{ steps.get_versions.outputs.stable.tag }}
-          containerfiles: |
-            specs/wine/Containerfile
+      # - name: Configure tags
+      #   run: |
+
+
+      # - name: The Buildah Action to build containers.
+      #   id: build-image
+      #   uses: redhat-actions/buildah-build@v2
+      #   with:
+      #     image: wine-stable
+      #     tags: latest ${{ steps.get_versions.outputs.stable.tag }}
+      #     containerfiles: |
+      #       specs/wine/Containerfile
 
   # check_wine:
   #   needs: wine
@@ -128,39 +152,46 @@ jobs:
     needs: [ changes, wine ]
     if: always() && needs.changes.outputs.pywine == 'true' && needs.wine.result == ( 'success' || 'skipped' )
     runs-on: ubuntu-latest
+    steps:
+      - name: Placeholder for pywine
+        run: |
+          echo "WIP: pywine"
 
-  megatrader5:
+  metatrader5:
     needs: [ changes, pywine ]
-    if: always() && needs.changes.outputs.megatrader5 == 'true' && needs.pywine.result == ( 'success' || 'skipped' )
-    runs-on: ubuntu-latest
-
-
-  build_and_push:
-    needs: changes
-    if: needs.changes.outputs.trigger_build == 'true'
-    strategy:
-      max-parallel: 1
-      matrix:
-        container: ${{ fromJSON(needs.changes.outputs.containers) }}
+    if: always() && needs.changes.outputs.metatrader5 == 'true' && needs.pywine.result == ( 'success' || 'skipped' )
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Login to GitHub Packages Container Registry
-        uses: redhat-actions/podman-login@v1
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build
+      - name: Placeholder for pywine
         run: |
-          make ${{ matrix.container }}
+          echo "WIP: metatrader5"
 
-      - name: Push
-        run: |
-          cd specs/${{ matrix.container }}
-          make push
+  # build_and_push:
+  #   needs: changes
+  #   if: needs.changes.outputs.trigger_build == 'true'
+  #   strategy:
+  #     max-parallel: 1
+  #     matrix:
+  #       container: ${{ fromJSON(needs.changes.outputs.containers) }}
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v3
+
+  #     - name: Login to GitHub Packages Container Registry
+  #       uses: redhat-actions/podman-login@v1
+  #       with:
+  #         registry: ghcr.io
+  #         username: ${{ github.repository_owner }}
+  #         password: ${{ secrets.GITHUB_TOKEN }}
+
+  #     - name: Build
+  #       run: |
+  #         make ${{ matrix.container }}
+
+  #     - name: Push
+  #       run: |
+  #         cd specs/${{ matrix.container }}
+  #         make push
 
 
